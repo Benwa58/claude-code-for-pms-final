@@ -24,6 +24,12 @@ prompt library built from your own questions.
 
 ### 1.
 
+Give me a deep dive on Release 4.2. I understand the two changes that shipped but what has been the impact on key metrics that are tracked for product performance so I can better understand the before/after impact of this release
+
 ### 2.
 
+Ok this is the 4.2 impact. Give me a brief overview of the overall Rook Dispatch product functionality. This response was helpful but where accepting pings in the user journey would help give me more context
+
 ### 3.
+
+I know there were two changes shipped in 4.2, but since a ping only sits with one responder at a time, the weighted proximity just decides which responders the ping is routed to. The ping time decreasing from 90s to 60s would impact acceptance rates vs. who it is actually routed to, logically
