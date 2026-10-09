@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Release 4.2: what happened and how we stop it recurring</title>
+<style>
+  :root { --bg:#0b1220; --panel:#111b2e; --panel2:#16233b; --ink:#e8edf7; --muted:#93a1bb; --line:#24334f;
+          --blue:#5b8cff; --orange:#ff9f43; --red:#ff6b6b; --green:#3ddc97; --gold:#ffd166; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  section { min-height:100vh; padding:72px 6vw; display:flex; flex-direction:column; justify-content:center; border-bottom:1px solid var(--line); position:relative; }
+  .wrap { max-width:1180px; margin:0 auto; width:100%; }
+  .eyebrow { color:var(--blue); font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:13px; margin-bottom:10px; }
+  h1 { font-size:clamp(34px,6vw,68px); line-height:1.05; margin:0 0 18px; letter-spacing:-.02em; }
+  h2 { font-size:clamp(26px,3.6vw,42px); line-height:1.15; margin:0 0 14px; letter-spacing:-.01em; }
+  h3 { margin:0 0 8px; font-size:18px; }
+  p { margin:0 0 12px; } .lead { font-size:clamp(17px,2vw,22px); color:#c9d3e6; max-width:820px; }
+  .muted { color:var(--muted); } .small { font-size:13px; }
+  .hero { background:radial-gradient(1200px 600px at 80% -10%,#1b2f5a 0%,transparent 60%),radial-gradient(900px 500px at -10% 110%,#3a1f2e 0%,transparent 55%),var(--bg); }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-top:30px; }
+  .stat { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px 20px; }
+  .stat b { display:block; font-size:36px; line-height:1.1; letter-spacing:-.02em; }
+  .stat span { color:var(--muted); font-size:14px; }
+  .red{color:var(--red)} .green{color:var(--green)} .orange{color:var(--orange)} .blue{color:var(--blue)} .gold{color:var(--gold)}
+  .chain { display:flex; flex-wrap:wrap; gap:10px; align-items:stretch; margin:26px 0 10px; }
+  .node { flex:1 1 170px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; position:relative; }
+  .node small { display:block; color:var(--muted); font-size:12px; margin-bottom:4px; letter-spacing:.05em; text-transform:uppercase; }
+  .node b { font-size:17px; }
+  .node.inf { border-style:dashed; border-color:#6b5a2a; background:#1b1a12; }
+  .node.hot { border-color:var(--red); }
+  .arrow { align-self:center; color:var(--muted); font-size:22px; }
+  .loop { margin-top:10px; padding:12px 16px; border:1px dashed var(--orange); border-radius:12px; color:#ffd7a6; font-size:15px; }
+  .two { display:grid; grid-template-columns:1.05fr 1fr; gap:36px; align-items:center; }
+  @media (max-width:900px){ .two{grid-template-columns:1fr;} .arrow{display:none;} section{padding:56px 5vw;} }
+  .tag { display:inline-block; background:var(--panel2); border:1px solid var(--line); color:#b9c6df; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:600; margin-bottom:12px; letter-spacing:.04em; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:22px 24px; }
+  .bubble { background:#1d3a72; border:1px solid #2b4f98; border-radius:18px 18px 4px 18px; padding:16px 18px; color:#eaf1ff; font-size:15px; line-height:1.55; }
+  .bubble small { display:block; color:#9db9f0; margin-bottom:6px; letter-spacing:.06em; text-transform:uppercase; font-size:11px; font-weight:700; }
+  .finding { margin-top:14px; border-left:3px solid var(--green); padding:2px 0 2px 14px; color:#d4e4dc; }
+  .src { margin-top:12px; color:var(--muted); font-size:12px; }
+  .bars { display:grid; gap:16px; }
+  .barrow .lab { display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px; color:#c9d3e6; }
+  .track { height:26px; background:#0d1626; border-radius:8px; position:relative; overflow:hidden; margin-bottom:6px; }
+  .fill { height:100%; border-radius:8px; display:flex; align-items:center; padding-left:10px; font-weight:700; font-size:13px; color:#06101e; }
+  .dots { display:grid; grid-template-columns:repeat(21,1fr); gap:5px; max-width:520px; }
+  .dots i { aspect-ratio:1; border-radius:50%; background:#2a3c5f; display:block; }
+  .dots i.me { background:var(--gold); box-shadow:0 0 0 3px rgba(255,209,102,.3); }
+  .people { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .people span { background:var(--panel2); border:1px solid var(--line); border-radius:99px; padding:4px 12px; font-size:13px; }
+  svg text { fill:var(--muted); font-size:11px; font-family:inherit; }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; font-size:13px; color:#c9d3e6; margin:6px 0 0; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; }
+  pre { background:#0a1120; border:1px solid var(--line); border-radius:12px; padding:14px 16px; overflow:auto; font:13px/1.5 ui-monospace,Consolas,monospace; color:#d6e2ff; margin:0 0 14px; }
+  .gauge { position:relative; height:46px; margin:14px 0 36px; }
+  .gauge .bar { position:absolute; inset:14px 0 auto 0; height:18px; border-radius:9px; background:linear-gradient(90deg,var(--red) 0 60%,var(--green) 60% 100%); opacity:.85; }
+  .gauge .mk { position:absolute; top:0; transform:translateX(-50%); text-align:center; font-size:12px; color:#c9d3e6; white-space:nowrap; }
+  .gauge .mk::after { content:""; display:block; width:2px; height:20px; background:#fff; margin:2px auto 0; }
+  .gauge .mk.bot { top:auto; bottom:-34px; } .gauge .mk.bot::after { display:none; }
+  .frame { border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#fff; }
+  .frame iframe { width:100%; height:640px; border:0; display:block; }
+  .btn { display:inline-block; margin-top:12px; background:var(--blue); color:#06101e; font-weight:700; padding:9px 16px; border-radius:10px; text-decoration:none; font-size:14px; }
+  .decs { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; margin-top:18px; }
+  .dec { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; font-size:14px; }
+  .dec b { display:block; margin-bottom:4px; color:var(--green); }
+  .dec.no b { color:var(--orange); }
+  .score { display:grid; gap:8px; }
+  .chk { display:grid; grid-template-columns:78px 1fr; gap:12px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .pill { text-align:center; font-weight:700; font-size:12px; border-radius:8px; padding:4px 0; }
+  .pill.p { background:#12382a; color:var(--green); } .pill.a { background:#3b2c10; color:var(--gold); }
+  .chk b { font-size:14px; display:block; } .chk span { color:var(--muted); font-size:13px; }
+  .map { display:grid; gap:10px; margin-top:6px; }
+  .map div { display:grid; grid-template-columns:1fr 26px 1fr; gap:6px; align-items:center; font-size:14px; }
+  .map .gap, .map .ck { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 12px; }
+  .map .ck { border-color:#2b4f98; color:#cfe0ff; } .map .ar { color:var(--muted); text-align:center; }
+  nav.dots { position:fixed; right:14px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:10px; z-index:10; }
+  nav.dots a { width:10px; height:10px; border-radius:50%; background:#2a3c5f; display:block; }
+  nav.dots a.on { background:var(--blue); transform:scale(1.4); }
+  @media (max-width:900px){ nav.dots{display:none;} }
+  .foot { color:var(--muted); font-size:13px; border-top:1px solid var(--line); padding-top:14px; margin-top:26px; }
+</style>
+</head>
+<body>
+<nav class="dots" id="dots"></nav>
+
+<section class="hero" id="s0">
+  <div class="wrap">
+    <div class="eyebrow">Rook Dispatch · Final report</div>
+    <h1>Release 4.2 quietly switched four responders off.</h1>
+    <p class="lead">A shorter wait to answer a ping, a track record that never forgives a miss, and a console that can't tell a handler why. Here is what happened, the evidence from six modules, the fix, and the habit that stops it recurring.</p>
+    <div class="stats">
+      <div class="stat"><b class="red">2.3% → 18.0%</b><span>pings missed, before and after 4.2</span></div>
+      <div class="stat"><b class="orange">49 → 3</b><span>pings a week reaching four responders</span></div>
+      <div class="stat"><b>~6 → ~29</b><span>support tickets per week</span></div>
+      <div class="stat"><b class="green">0</b><span>times anyone recorded why the wait was cut</span></div>
+    </div>
+    <p class="small muted" style="margin-top:20px">Fictional scenario from Product School's Claude Code for PMs course. Numbers are from rook-database and callout-history.csv unless marked as an inference.</p>
+  </div>
+</section>
+
+<section id="s1">
+  <div class="wrap">
+    <div class="eyebrow">What happened</div>
+    <h2>Two changes shipped on 12 August. One of them set off a chain.</h2>
+    <p class="lead">4.2 weighted proximity up (0.45 to 0.60) and cut the ping wait from 90 seconds to 60. The wait acts at the moment of answering, so it changed behavior first. A missed ping then counts exactly like a turn-down, and a score never recovers by itself.</p>
+    <div class="chain">
+      <div class="node"><small>12 Aug</small><b>Ping wait 90s → 60s</b></div><div class="arrow">→</div>
+      <div class="node hot"><small>Immediately</small><b>Missed pings 2.3% → 18.0%</b><div class="small muted">Turned-down did not rise</div></div><div class="arrow">→</div>
+      <div class="node"><small>In the code</small><b>Miss = decline: −0.12</b><div class="small muted">A take earns only +0.08, no decay</div></div><div class="arrow">→</div>
+      <div class="node inf"><small>Inference, unconfirmed</small><b>Score outweighs closeness</b><div class="small muted">Wen Li to confirm</div></div><div class="arrow">→</div>
+      <div class="node hot"><small>Result</small><b>Four responders go quiet</b><div class="small muted">Handlers see silence, no reason</div></div>
+    </div>
+    <div class="loop">Feedback loop: fewer pings means fewer chances to earn points back, so the quiet ones stay quiet. Nothing in the console tells a handler why.</div>
+    <p class="foot">Nobody has recorded why the wait was cut. Not the wiki, the code, the changelog or Priya's handoff. That is a finding in its own right.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="wrap two">
+    <div>
+      <div class="tag">MODULE 1 · ORIGIN STORY</div>
+      <h2>The headline numbers moved the wrong way.</h2>
+      <p class="lead">Acceptance fell from 76.6% to 64.0%, and almost all of it is missed pings, not refusals.</p>
+      <div class="bars">
+        <div class="barrow"><div class="lab"><span>Acceptance rate</span><span>76.6% → 64.0%</span></div>
+          <div class="track"><div class="fill" style="width:76.6%;background:var(--blue)">before 76.6%</div></div>
+          <div class="track"><div class="fill" style="width:64%;background:var(--orange)">after 64.0%</div></div></div>
+        <div class="barrow"><div class="lab"><span>Missed pings</span><span>2.3% → 18.0%</span></div>
+          <div class="track"><div class="fill" style="width:12.8%;background:var(--blue)">2.3%</div></div>
+          <div class="track"><div class="fill" style="width:100%;background:var(--red)">18.0%</div></div></div>
+      </div>
+      <p class="src">Source: rook-database, 29 Jun to 6 Sep, 4.2 = 12 Aug. Recorded in CLAUDE.md, "What the data showed".</p>
+    </div>
+    <div>
+      <div class="bubble"><small>The prompt I wrote</small>Give me a deep dive on Release 4.2. I understand the two changes that shipped but what has been the impact on key metrics that are tracked for product performance so I can better understand the before/after impact of this release</div>
+      <div class="finding">Weekly low was 54.2%, but that week mixes days before and after the release, so I never used it as the 4.2 figure.</div>
+    </div>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="wrap two">
+    <div>
+      <div class="tag">MODULE 2 · SUPER HEARING</div>
+      <h2>Two piles of feedback that barely overlapped.</h2>
+      <p class="lead">147 support tickets and four handler interviews. Only one ticket came from someone I interviewed.</p>
+      <div class="people"><span>Aunt Dot</span><span>Mr. Ambrose</span><span>Halloran</span><span>Kip</span></div>
+      <div class="dots" id="dotgrid" aria-label="147 tickets, one highlighted"></div>
+      <p class="small muted" style="margin-top:10px"><span class="gold">●</span> the one ticket from an interviewed handler. The heaviest filers (Okafor, Pruitt, Fischer, Demir) were never interviewed.</p>
+      <p class="src">Source: wiki Research pages and the support_tickets table. Tickets look templated, so counts overstate independent reports.</p>
+    </div>
+    <div>
+      <div class="bubble"><small>The prompt I wrote</small>You've now read both folders (interviews and tickets). Where do they disagree? What's loud in the interviews but rare in the tickets, and what's all over the tickets that nobody brought up in the interviews?</div>
+      <div class="finding">Both sources show vanishing pings after 4.2, but the best follow-ups are the loud ticket filers, not the people I had already talked to.</div>
+    </div>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="wrap">
+    <div class="two" style="align-items:start">
+      <div>
+        <div class="tag">MODULE 3 · REWIND</div>
+        <h2>The average hid four people.</h2>
+        <p class="lead">Split into two cohorts, the story is clear: the other twelve recovered, and four responders effectively left the pool.</p>
+        <div class="bubble"><small>The prompt I wrote</small>For our executive reporting, show it as two metrics, group one cohort of the 4 responders who dropped significantly and the other cohort of the remaining 12 responders</div>
+        <div class="finding">The four (The Undertow, Farlight, Meteor Mite, Vesper) went from about 49 pings a week to 3, with acceptance 75.9% to 12%. The headline recovery is partly mechanical: they simply stopped being pinged.</div>
+        <p class="src">Source: 00-rook/data/callout-history.csv, 16 responders × 10 weeks. The 12% is the 17 to 31 Aug average. The "3" is the last week only.</p>
+      </div>
+      <div class="card">
+        <h3>Pings sent per week</h3>
+        <div id="chartPings"></div>
+        <h3 style="margin-top:18px">Acceptance rate per week</h3>
+        <div id="chartAcc"></div>
+        <div class="legend"><span><i style="background:var(--red)"></i>The four quiet responders</span><span><i style="background:var(--blue)"></i>The other twelve</span><span><i style="background:#fff"></i>4.2 ships 12 Aug</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="wrap two">
+    <div>
+      <div class="tag">MODULE 4 · X-RAY VISION</div>
+      <h2>The code explains it: misses cost more than takes earn.</h2>
+      <p class="lead">A responder needs to say yes at least 60% of the time just to hold their score. Before 4.2 the typical rate was about 77%. After, about 64%, barely above the line.</p>
+      <pre>ACCEPTANCE_CREDIT = 0.08   # taken
+DECLINE_PENALTY   = 0.12   # turned down OR missed
+# no decay, no reset: scores never ease back</pre>
+      <div class="gauge">
+        <div class="bar"></div>
+        <div class="mk" style="left:60%">break-even 60%</div>
+        <div class="mk bot" style="left:64%;color:var(--orange)">~64% after 4.2</div>
+        <div class="mk bot" style="left:77%;color:var(--green)">~77% before</div>
+        <div class="mk bot" style="left:30%;color:var(--red)">score drifts down</div>
+      </div>
+      <p class="src">Source: 00-rook/code/dispatch-routing/config.py and history.py. Break-even = 0.12 ÷ (0.12 + 0.08) = 60%. Wen Li's 2019 TODO already asked whether this should ease back.</p>
+    </div>
+    <div>
+      <div class="bubble"><small>The prompt I wrote</small>Find me the part of this code that takes points off somebody when they miss a ping or turn one down. Show it to me and explain it in plain English. Then find me every single thing in this code that puts points back on.</div>
+      <div class="finding">The only thing that puts points back is taking a callout (+0.08). Nothing else restores a score, so a quiet responder has no route back.</div>
+    </div>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="wrap">
+    <div class="tag">MODULE 5 · SUPER SPEED</div>
+    <h2>The fix: show handlers why, and let responders come back.</h2>
+    <p class="lead">Helen didn't want a number quietly changed. She wanted something Kip would notice and a quiet responder would feel. This is the prototype, built from my brief.</p>
+    <div class="bubble" style="max-width:900px;margin-bottom:18px"><small>The prompt I wrote</small>Take the brief you just wrote and build me a working prototype, an actual screen I can click through, not a description of one. Save it as 05-super-speed/prototype.html, a single file I can just open in my browser. Show me where this would actually happen, and make at least one thing on it respond when I click it.</div>
+    <div class="frame"><iframe src="05-super-speed/prototype.html" title="Clickable prototype: handler roster and responder phone app" loading="lazy"></iframe></div>
+    <a class="btn" href="05-super-speed/prototype.html">Open the prototype full screen</a>
+    <p class="small muted" style="margin-top:8px">Click a responder, then "Tell us what happened", "Fast-forward 1 week" and "System resets standing". If the frame is blank, open it from the folder or the link above.</p>
+    <div class="decs">
+      <div class="dec"><b>Handlers get insight</b>A plain-language "why is this responder quiet?" with a trend and an outcome breakout (taken, turned down, missed).</div>
+      <div class="dec"><b>Track record that heals</b>Misses weigh less than turn-downs, and standing eases back toward neutral. Automatic.</div>
+      <div class="dec"><b>A one-time fresh start</b>Run by Engineering for the four, after the wait and weighting are fixed.</div>
+      <div class="dec no"><b>Not building</b>Handler resets, or a visible score or rank. Both invite bias and gaming.</div>
+    </div>
+    <p class="foot">Honest limits: visibility alone isn't the fix. Reverting the wait is a separate decision for Helen and Marcus. Prototype figures are illustrative, and the success targets are my guesses.</p>
+  </div>
+</section>
+
+<section id="s7">
+  <div class="wrap two">
+    <div>
+      <div class="tag">MODULE 6 · SIDEKICKS</div>
+      <h2>The habit: a review skill that checks every brief the same way.</h2>
+      <p class="lead">Two things in this story were never written down: why the wait was cut, and why a committed feature (Availability Confidence) dropped out. The skill checks for exactly those gaps before a brief goes further.</p>
+      <div class="bubble"><small>The prompt I wrote</small>Update the skill to check for a timeline, and look for logical inconsistencies</div>
+      <div class="finding">Run on my own brief, it said "fix first, 2 of 6 pass": owner is a role not a name, the next step is stale, there are no dates, and the reset depends on a wait fix the brief puts out of scope. I'll fix those before this goes to Helen.</div>
+      <p class="src">It runs again every Monday morning (scheduled task) and reports what changed. It reviews only; it doesn't edit the brief.</p>
+    </div>
+    <div>
+      <div class="score">
+        <div class="chk"><div class="pill a">Partial</div><div><b>1. Owner named</b><span>"Dispatch PM" is a role</span></div></div>
+        <div class="chk"><div class="pill p">Pass</div><div><b>2. Success is measurable</b><span>Baseline, target, 3 weeks</span></div></div>
+        <div class="chk"><div class="pill a">Partial</div><div><b>3. Scope matches start to end</b><span>Next step is out of date</span></div></div>
+        <div class="chk"><div class="pill p">Pass</div><div><b>4. Problem before fix</b><span>Sourced problem comes first</span></div></div>
+        <div class="chk"><div class="pill a">Partial</div><div><b>5. Timeline</b><span>No ship or review date</span></div></div>
+        <div class="chk"><div class="pill a">Partial</div><div><b>6. No logical inconsistencies</b><span>Reset depends on a wait decision</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="wrap">
+    <div class="eyebrow">Why this stops it happening again</div>
+    <h2>Each gap that let 4.2 slip maps to a check.</h2>
+    <div class="map">
+      <div><span class="gap">The wait was cut with no recorded reason</span><span class="ar">→</span><span class="ck">Check 4: problem explained, with evidence, before the fix</span></div>
+      <div><span class="gap">Afterward we couldn't tell if the wait worked: response times aren't logged</span><span class="ar">→</span><span class="ck">Check 2: baseline, target and time frame</span></div>
+      <div><span class="gap">A committed feature dropped out with no conversation</span><span class="ar">→</span><span class="ck">Check 3: scope at the end matches scope at the start</span></div>
+      <div><span class="gap">Two changes landed together, so their effects can't be separated</span><span class="ar">→</span><span class="ck">Check 1: a named owner; plus Check 3 scope and a coverage line for dependencies and risks</span></div>
+      <div><span class="gap">"Mostly seasonal" rested on one person's read</span><span class="ar">→</span><span class="ck">Check 6 and coverage: assumptions marked, no claim stated two ways</span></div>
+      <div><span class="gap">No dates, no rollback</span><span class="ar">→</span><span class="ck">Check 5: timeline, plus a rollout line in coverage</span></div>
+    </div>
+    <p class="foot">The skill doesn't prevent bugs by itself. It makes sure the questions get asked in the brief, before shipping, every time. The left column is what we found missing afterward. I haven't seen 4.2's original brief, so these are gaps in the record, not claims about how it was written.</p>
+  </div>
+</section>
+
+<section id="s9">
+  <div class="wrap">
+    <div class="eyebrow">Where it stands</div>
+    <h2>What's confirmed, what isn't, and what's next.</h2>
+    <div class="decs" style="margin-top:8px">
+      <div class="dec"><b>Confirmed in the data</b>Missed pings drove the drop; four responders went quiet; the wait change is visible in the pass-on gap (92s to 62s).</div>
+      <div class="dec no"><b>Still an inference</b>That the recent-acceptance score outweighed proximity for the four. Needs Wen Li.</div>
+      <div class="dec no"><b>Open questions</b>Do scores survive a restart? Are they logged per ping? Why 60s? Does a Supply check change rebalancing?</div>
+      <div class="dec"><b>Next</b>Fix the brief's four gaps, get Wen and Marcus on decay and weights, and decide the wait revert with Helen.</div>
+    </div>
+    <p class="foot">How this report was built: I read CLAUDE.md and all six prompts.md files. For each module I paired one finding in CLAUDE.md with the prompt I wrote that fits it. Modules 5 and 6 are direct. For Modules 1 to 4 I matched by topic and wording, not by replaying the sessions, so treat those pairings as best fit.</p>
+  </div>
+</section>
+
+<script>
+(function(){
+  var secs=[].slice.call(document.querySelectorAll('section'));
+  var nav=document.getElementById('dots');
+  secs.forEach(function(s){ var a=document.createElement('a'); a.href='#'+s.id; a.setAttribute('aria-label','Go to '+s.id); nav.appendChild(a); });
+  var links=[].slice.call(nav.children);
+  function upd(){ var y=window.scrollY+window.innerHeight/2, cur=0; secs.forEach(function(s,i){ if(s.offsetTop<=y) cur=i; }); links.forEach(function(l,i){ l.className=i===cur?'on':''; }); }
+  window.addEventListener('scroll',upd); upd();
+  document.addEventListener('keydown',function(e){
+    var y=window.scrollY+window.innerHeight/2, cur=0; secs.forEach(function(s,i){ if(s.offsetTop<=y) cur=i; });
+    if(e.key==='ArrowRight'||e.key==='PageDown'){ if(cur<secs.length-1){ secs[cur+1].scrollIntoView(); e.preventDefault(); } }
+    if(e.key==='ArrowLeft'||e.key==='PageUp'){ if(cur>0){ secs[cur-1].scrollIntoView(); e.preventDefault(); } }
+  });
+
+  var g=document.getElementById('dotgrid'), h='';
+  for(var i=0;i<147;i++){ h+='<i'+(i===73?' class="me"':'')+'></i>'; }
+  g.innerHTML=h;
+
+  var wk=['29 Jun','6 Jul','13 Jul','20 Jul','27 Jul','3 Aug','10 Aug','17 Aug','24 Aug','31 Aug'];
+  var four=[49,48,48,50,50,49,43,16,6,3], twelve=[123,122,126,126,120,123,134,142,156,162];
+  var accFour=[73.5,77.1,75.0,74.0,80.0,75.5,41.9,18.8,0.0,0.0], accTwelve=[78.0,77.0,77.0,75.4,76.7,78.9,58.2,71.1,69.2,74.1];
+  function line(el,a,b,max,fmt){
+    var W=520,H=210,L=40,R=12,T=14,B=28, n=a.length;
+    function x(i){return L+i*(W-L-R)/(n-1);} function y(v){return T+(1-v/max)*(H-T-B);}
+    function path(d){return d.map(function(v,i){return (i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1);}).join(' ');}
+    var s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img">';
+    for(var t=0;t<=4;t++){ var v=max*t/4; s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#24334f"/><text x="'+(L-6)+'" y="'+(y(v)+4)+'" text-anchor="end">'+fmt(v)+'</text>'; }
+    wk.forEach(function(w,i){ if(i%2===0) s+='<text x="'+x(i)+'" y="'+(H-8)+'" text-anchor="middle">'+w+'</text>'; });
+    var rx=x(6)+(x(7)-x(6))*(2/7);
+    s+='<line x1="'+rx+'" x2="'+rx+'" y1="'+T+'" y2="'+(H-B)+'" stroke="#fff" stroke-dasharray="4 4" opacity=".8"/>';
+    s+='<path d="'+path(b)+'" fill="none" stroke="#5b8cff" stroke-width="3" stroke-linejoin="round"/><path d="'+path(a)+'" fill="none" stroke="#ff6b6b" stroke-width="3" stroke-linejoin="round"/>';
+    s+='<circle cx="'+x(n-1)+'" cy="'+y(a[n-1])+'" r="4.5" fill="#ff6b6b"/><circle cx="'+x(n-1)+'" cy="'+y(b[n-1])+'" r="4.5" fill="#5b8cff"/></svg>';
+    document.getElementById(el).innerHTML=s;
+  }
+  line('chartPings',four,twelve,180,function(v){return Math.round(v);});
+  line('chartAcc',accFour,accTwelve,100,function(v){return Math.round(v)+'%';});
+})();
+</script>
+</body>
+</html>
