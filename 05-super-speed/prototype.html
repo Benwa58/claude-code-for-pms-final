@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rook Dispatch - Quiet responders prototype</title>
+<style>
+  :root {
+    --bg:#eef0f4; --panel:#fff; --ink:#18202c; --muted:#667085; --line:#e4e7ec; --soft:#f7f8fa;
+    --brand:#14243d; --accent:#2f6fed; --accentbg:#e8efff;
+    --warn:#b54708; --warnbg:#fff3e0; --warnline:#f6d9a8; --ok:#067647; --okbg:#e6f6ec; --okline:#b9e3c9;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0e1420; --panel:#161e2d; --ink:#e8ecf3; --muted:#9aa5b8; --line:#26324a; --soft:#1b2538;
+      --accentbg:#1d2f55; --warnbg:#3a2a12; --warnline:#6b4a1c; --warn:#f2b266; --okbg:#10321f; --okline:#1f5d3a; --ok:#6bd39a; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--ink); }
+  .app { display:grid; grid-template-columns:200px minmax(0,1fr); min-height:100vh; }
+  .side { background:var(--brand); color:#c8d3e6; padding:18px 12px; }
+  .logo { color:#fff; font-weight:700; font-size:16px; padding:0 8px 18px; display:flex; align-items:center; gap:8px; }
+  .logo i { width:22px; height:22px; border-radius:6px; background:linear-gradient(135deg,#5b8cff,#2f6fed); display:inline-block; }
+  .side a { display:block; padding:8px 10px; border-radius:8px; margin-bottom:2px; color:#c8d3e6; cursor:default; }
+  .side a.on { background:rgba(255,255,255,.12); color:#fff; font-weight:600; }
+  .side .sec { font-size:11px; text-transform:uppercase; letter-spacing:.06em; opacity:.55; padding:16px 10px 6px; }
+  .content { min-width:0; }
+  .top { background:var(--panel); border-bottom:1px solid var(--line); padding:10px 24px; display:flex; align-items:center; gap:12px; }
+  .top .crumb { color:var(--muted); }
+  .top .sp { flex:1; }
+  .avatar { width:28px; height:28px; border-radius:50%; background:var(--accentbg); color:var(--accent); display:grid; place-items:center; font-weight:700; font-size:12px; }
+  .demo { background:repeating-linear-gradient(45deg,var(--soft),var(--soft) 8px,var(--panel) 8px,var(--panel) 16px); border-bottom:1px dashed var(--line); padding:8px 24px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+  .demo b { color:var(--ink); }
+  .grid { display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:24px; padding:24px; align-items:start; }
+  @media (max-width:1100px){ .grid{grid-template-columns:minmax(0,1fr);} .app{grid-template-columns:minmax(0,1fr);} .side{display:none;} .phonecol{position:static;} }
+  @media (max-width:600px){ .grid{padding:16px 12px;} .kpis{grid-template-columns:1fr;} .phone{width:100%;max-width:300px;} .top,.demo{padding-left:12px;padding-right:12px;} }
+  h1 { font-size:20px; margin:0 0 2px; }
+  .sub { color:var(--muted); margin:0 0 16px; }
+  .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+  .kpi { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; box-shadow:var(--shadow); }
+  .kpi .l { color:var(--muted); font-size:12px; }
+  .kpi .v { font-size:24px; font-weight:700; margin-top:2px; }
+  .kpi .v.warn { color:var(--warn); } .kpi .v.ok { color:var(--ok); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); overflow:hidden; }
+  .tools { display:flex; gap:8px; padding:12px 16px; border-bottom:1px solid var(--line); align-items:center; flex-wrap:wrap; }
+  .chip { border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:99px; padding:4px 12px; font-size:13px; cursor:pointer; }
+  .chip.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .chip small { opacity:.75; margin-left:4px; }
+  input.search { margin-left:auto; border:1px solid var(--line); background:var(--soft); color:var(--ink); border-radius:8px; padding:6px 10px; font:inherit; min-width:170px; }
+  .row { display:grid; grid-template-columns:1.3fr .8fr .9fr 1.5fr 1.1fr 18px; gap:12px; padding:12px 16px; align-items:center; border-top:1px solid var(--line); cursor:pointer; }
+  .row.head { cursor:default; border-top:0; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; background:var(--soft); }
+  .row:not(.head):hover { background:var(--soft); }
+  .row.sel { background:var(--accentbg); }
+  .who { display:flex; gap:10px; align-items:center; }
+  .dot { width:32px; height:32px; border-radius:50%; background:var(--accentbg); color:var(--accent); display:grid; place-items:center; font-weight:700; font-size:12px; flex:none; }
+  .name { font-weight:600; } .hand { font-size:12px; color:var(--muted); }
+  .num b { font-size:16px; } .num small { color:var(--muted); }
+  .trend { white-space:nowrap; font-weight:600; color:var(--muted); font-size:13px; }
+  .trend.quiet { color:var(--warn); } .trend.good { color:var(--ok); }
+  .trend svg { vertical-align:middle; margin-right:6px; }
+  .tag { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; padding:2px 10px; border-radius:99px; font-size:12px; font-weight:600; }
+  .tag::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .tag.good { background:var(--okbg); color:var(--ok); } .tag.quiet { background:var(--warnbg); color:var(--warn); } .tag.fresh { background:var(--accentbg); color:var(--accent); }
+  .chev { color:var(--muted); transition:transform .15s; } .row.sel .chev { transform:rotate(90deg); }
+  .detail { display:none; padding:16px; border-top:1px solid var(--line); background:var(--soft); }
+  .detail.open { display:grid; grid-template-columns:1.2fr 1fr; gap:16px; }
+  @media (max-width:760px){ .detail.open{grid-template-columns:1fr;} .row{grid-template-columns:1fr 1fr;} .row.head{display:none;} }
+  .why { background:var(--panel); border:1px solid var(--warnline); border-radius:10px; padding:12px 14px; }
+  .why.ok { border-color:var(--okline); }
+  .why h4 { margin:0 0 4px; font-size:14px; }
+  .why p { margin:0; }
+  .box { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .box h5 { margin:0 0 8px; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .bars { display:flex; align-items:flex-end; gap:5px; height:70px; padding-top:14px; }
+  .bars .col { flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%; position:relative; }
+  .bars .col > span { text-align:center; font-size:10px; color:var(--muted); position:absolute; left:0; right:0; }
+  .bars .stack div { width:100%; }
+  .axis { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:4px; }
+  .outs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .out { border-radius:10px; padding:8px 10px; border:1px solid var(--line); background:var(--panel); }
+  .out .l { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .out .l i { width:8px; height:8px; border-radius:2px; display:inline-block; }
+  .out .v { font-size:20px; font-weight:700; }
+  .c-t { background:var(--ok); } .c-d { background:#98a2b3; } .c-m { background:var(--warn); }
+  .strip { margin-bottom:16px; }
+  .strip h5 { margin:0 0 8px; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .stack { display:flex; flex-direction:column-reverse; flex:1; border-radius:3px 3px 0 0; overflow:hidden; min-height:3px; }
+  .stack div { min-height:0; }
+  .log { list-style:none; margin:0; padding:0; font-size:13px; }
+  .log li { padding:5px 0; border-top:1px solid var(--line); display:flex; justify-content:space-between; }
+  .log li:first-child { border-top:0; }
+  .log .m { color:var(--warn); font-weight:600; }
+  .actions { display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+  button { font:inherit; border-radius:8px; padding:7px 13px; cursor:pointer; border:1px solid var(--line); background:var(--panel); color:var(--ink); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  button:disabled { opacity:.55; cursor:default; }
+  button:hover:not(:disabled) { filter:brightness(.96); }
+  .fine { font-size:12px; color:var(--muted); }
+  .empty { padding:30px; text-align:center; color:var(--muted); }
+  .scrim { position:fixed; inset:0; background:rgba(10,16,28,.5); display:none; place-items:center; z-index:10; }
+  .scrim.open { display:grid; }
+  .modal { background:var(--panel); border-radius:14px; padding:20px; width:min(420px,92vw); box-shadow:0 12px 40px rgba(0,0,0,.3); }
+  .modal h3 { margin:0 0 4px; } .modal label { display:block; padding:6px 0; cursor:pointer; }
+  .modal textarea { width:100%; min-height:60px; font:inherit; border:1px solid var(--line); border-radius:8px; padding:8px; background:var(--soft); color:var(--ink); margin-top:6px; }
+  .toastbar { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(80px); background:#18202c; color:#fff; padding:10px 16px; border-radius:10px; transition:transform .25s; z-index:20; }
+  .toastbar.show { transform:translateX(-50%) translateY(0); }
+  .phonecol { position:sticky; top:16px; }
+  .phone { width:300px; margin:0 auto; background:#0b0f17; border-radius:40px; padding:11px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+  .screen { background:#f6f7f9; border-radius:30px; height:600px; overflow:hidden; display:flex; flex-direction:column; color:#18202c; }
+  .status { display:flex; justify-content:space-between; padding:10px 22px 4px; font-size:12px; font-weight:600; }
+  .appbar { padding:6px 18px 12px; display:flex; justify-content:space-between; align-items:center; }
+  .appbar h3 { margin:0; font-size:18px; } .appbar .sm { color:#667085; font-size:12px; }
+  .avail { font-size:12px; color:#067647; font-weight:600; background:#e6f6ec; border-radius:99px; padding:4px 10px; }
+  .body { flex:1; overflow:auto; padding:0 14px 12px; }
+  .pn { border-radius:14px; padding:12px 14px; margin-bottom:12px; font-size:13px; }
+  .pn b { display:block; font-size:14px; margin-bottom:2px; }
+  .pn.on { background:#e6f6ec; border:1px solid #b9e3c9; color:#0b4d2d; }
+  .pn.warm { background:#fff3e0; border:1px solid #f6d9a8; color:#7a3d06; }
+  .pn.plain { background:#fff; border:1px solid #e4e7ec; color:#667085; }
+  .sect { font-size:12px; font-weight:700; color:#667085; text-transform:uppercase; letter-spacing:.05em; margin:6px 2px; }
+  .pg { background:#fff; border:1px solid #e4e7ec; border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:13px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .pg small { display:block; color:#667085; }
+  .pill { font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; }
+  .pill.t { background:#e6f6ec; color:#067647; } .pill.m { background:#fff3e0; color:#b54708; } .pill.d { background:#f1f2f4; color:#667085; }
+  .offer { background:#fff; border:2px solid #2f6fed; border-radius:14px; padding:12px; margin-bottom:10px; font-size:13px; }
+  .offer .btns { display:flex; gap:8px; margin-top:8px; }
+  .offer .btns button { flex:1; color:#18202c; background:#fff; border-color:#e4e7ec; }
+  .offer .btns button.primary { color:#fff; background:#2f6fed; }
+  .tabs { display:flex; border-top:1px solid #e4e7ec; background:#fff; padding:8px 0 14px; font-size:11px; text-align:center; color:#667085; }
+  .tabs span { flex:1; } .tabs .on { color:#2f6fed; font-weight:700; }
+  .pick { text-align:center; margin-top:12px; font-size:12px; color:var(--muted); }
+  .pick select { font:inherit; margin-left:4px; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:3px 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side">
+    <div class="logo"><i></i>Rook Dispatch</div>
+    <a>Incidents</a><a>Coverage</a><a class="on">Responders</a><a>Routing log</a>
+    <div class="sec">Handler</div><a>Availability</a><a>Capability tags</a><a>Settings</a>
+  </nav>
+  <div class="content">
+    <div class="top"><span class="crumb">Responders</span><span class="sp"></span><span class="fine">Handler view</span><div class="avatar">H</div></div>
+    <div class="demo"><b>Prototype controls</b> Illustrative data. Acts on the responder selected:
+      <button id="ff">Fast-forward 1 week</button>
+      <button id="simRestore">System resets standing</button>
+      <button id="resetAll">Reset demo</button>
+      <span>Handlers have none of these. No score or rank is shown to anyone.</span></div>
+    <div class="grid">
+      <section>
+        <h1>Responders</h1>
+        <p class="sub">See who has gone quiet and why. Handlers can add context but can't change a responder's standing.</p>
+        <div class="kpis" id="kpis"></div>
+        <div class="strip" id="strip"></div>
+        <div class="card">
+          <div class="tools" id="tools"></div>
+          <div id="roster"></div>
+        </div>
+      </section>
+      <aside class="phonecol">
+        <div class="phone"><div class="screen" id="screen"></div></div>
+        <div class="pick">Phone app as seen by <select id="who"></select></div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"><div class="modal" id="modal"></div></div>
+<div class="toastbar" id="toastbar"></div>
+
+<script>
+const initial = () => ([
+  { id:'undertow', name:'The Undertow', area:'Docks',    handler:'Okafor', before:12, now:1,  misses:['12 Aug','13 Aug','14 Aug','14 Aug'], state:'quiet', trend:[12,13,11,12,4,2,1,1] },
+  { id:'farlight', name:'Farlight',     area:'Uptown',   handler:'Pruitt', before:12, now:1,  misses:['12 Aug','13 Aug','14 Aug','14 Aug'], state:'quiet', trend:[12,11,12,12,5,2,1,1] },
+  { id:'mite',     name:'Meteor Mite',  area:'Eastgate', handler:'Kip',    before:11, now:1,  misses:['13 Aug','15 Aug','16 Aug'],          state:'quiet', trend:[11,11,12,10,4,2,1,1] },
+  { id:'vesper',   name:'Vesper',       area:'Harbour',  handler:'Ambrose',before:12, now:1,  misses:['13 Aug','14 Aug','15 Aug','17 Aug'], state:'quiet', trend:[12,12,11,12,4,2,1,1] },
+  { id:'gale',     name:'The Gale',     area:'Eastgate', handler:'Kip',    before:13, now:21, misses:[],                                    state:'good',  trend:[13,13,14,13,18,20,21,21] },
+]);
+let data = initial(), selected = 'farlight', filter = 'all', query = '';
+const $ = id => document.getElementById(id);
+const W = ['8 wks','7','6','5','4','3','2','now'];
+const initials = n => n.replace(/^The /,'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+const cur = () => data.find(x=>x.id===selected);
+const recovering = r => r.state==='recovering' || r.state==='fresh';
+const prevOffers = r => r.trend[r.trend.length-1-(r.weeks||0)];
+
+data.forEach(r => $('who').add(new Option(r.name, r.id)));
+$('who').value = selected;
+
+function toast(msg){ const t=$('toastbar'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove('show'),2600); }
+
+function spark(a,w=64,h=20){
+  const m=Math.max(...a,1), pts=a.map((v,i)=>(i*w/(a.length-1)).toFixed(1)+','+(h-2-v/m*(h-4)).toFixed(1)).join(' ');
+  return `<svg width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+function trendCell(r){
+  const base=r.trend[0], d=Math.round((r.now-base)/base*100);
+  const txt=(d>0?'+':d<0?'−':'')+Math.abs(d)+'% over 8 weeks';
+  return `<span class="trend ${d<=-25?'quiet':d>=25?'good':''}">${spark(r.trend)}${txt}</span>`;
+}
+function statusTag(r){
+  return {good:'<span class="tag good">In good standing</span>', fresh:'<span class="tag fresh">Standing restored</span>',
+          recovering:'<span class="tag fresh">Recovering</span>', quiet:'<span class="tag quiet">Quiet</span>'}[r.state];
+}
+function outcomes(r, n){
+  const q=Math.min(1, n/r.before);
+  const acc=0.15+0.62*q, miss=0.60-0.58*q;
+  let t=Math.round(n*acc), m=Math.round(n*miss);
+  if (t+m>n) m=n-t;
+  return {t, d:n-t-m, m};
+}
+function weekOutcomes(r){ return r.trend.map(n=>outcomes(r,n)); }
+function outTiles(o){
+  return `<div class="outs">
+    <div class="out"><div class="l"><i class="c-t"></i>Taken</div><div class="v">${o.t}</div></div>
+    <div class="out"><div class="l"><i class="c-d"></i>Turned down</div><div class="v">${o.d}</div></div>
+    <div class="out"><div class="l"><i class="c-m"></i>Missed</div><div class="v">${o.m}</div></div></div>`;
+}
+function bars(r){
+  const wo=weekOutcomes(r), m=Math.max(...r.trend,1);
+  return `<div class="bars">${wo.map((o,i)=>{const n=o.t+o.d+o.m; return `<div class="col" style="height:${Math.max(6,n/m*100)}%"><div class="stack">
+      <div class="c-t" style="flex:${o.t}"></div><div class="c-d" style="flex:${o.d}"></div><div class="c-m" style="flex:${o.m}"></div></div></div>`;}).join('')}</div>
+    <div class="axis">${W.map(w=>`<span>${w}</span>`).join('')}</div>`;
+}
+function detailHtml(r){
+  if (r.state==='good') return '';
+  let why;
+  if (r.state==='quiet') why = `<div class="why"><h4>Why is ${r.name} quiet?</h4><p>Offered ${r.now} callout${r.now===1?'':'s'} this week, down from ${r.before}. Track record dropped after ${r.misses.length} missed pings (${r.misses[0]} to ${r.misses[r.misses.length-1]}).</p></div>`;
+  else if (r.state==='recovering') why = `<div class="why ok"><h4>${r.name} is recovering</h4><p>Offered ${r.now} callouts this week, up from ${prevOffers(r)} ${r.weeks===1?'a week':r.weeks+' weeks'} ago. Earlier missed pings count for less each week. Nothing for you to do.</p></div>`;
+  else why = `<div class="why ok"><h4>Standing restored</h4><p>${r.name} will start appearing in first offers again for ${r.area} and has been sent a "You're back" notice. Nothing for you to do.</p></div>`;
+  const rep = r.reported ? `<button disabled>Sent to the Dispatch team</button><span class="fine">Thanks. This doesn't change ${r.name}'s standing.</span>` :
+    `<button class="primary" data-act="report" data-id="${r.id}">Tell us what happened</button><span class="fine">Goes to the Dispatch team as context. Doesn't change standing.</span>`;
+  const log = r.misses.length ? r.misses.map(d=>`<li><span>${d} · ${r.area}</span><span class="m">Missed</span></li>`).join('') : '<li><span>No recent misses</span></li>';
+  return `<div>${why}<div class="actions">${rep}</div></div>
+    <div><div class="box"><h5>This week, by outcome</h5>${outTiles(weekOutcomes(r).slice(-1)[0])}<h5>Offers per week</h5>${bars(r)}</div><div class="box" style="margin-top:10px"><h5>Recent missed pings</h5><ul class="log">${log}</ul></div></div>`;
+}
+function visible(){
+  return data.filter(r => (filter==='all' || (filter==='quiet'&&r.state==='quiet') || (filter==='recovering'&&recovering(r)) || (filter==='good'&&r.state==='good'))
+    && (r.name+r.area+r.handler).toLowerCase().includes(query.toLowerCase()));
+}
+function renderStrip(){
+  const tot=data.reduce((a,r)=>{const o=weekOutcomes(r).slice(-1)[0]; a.t+=o.t; a.d+=o.d; a.m+=o.m; return a;},{t:0,d:0,m:0});
+  $('strip').innerHTML=`<h5>Offer outcomes this week, all responders</h5>${outTiles(tot)}<div class="fine">Missed and turned down are counted separately. Missed means no answer before the ping wait ran out.</div>`;
+}
+function renderKpis(){
+  const q=data.filter(r=>r.state==='quiet').length, rc=data.filter(recovering).length, tot=data.reduce((a,r)=>a+r.now,0);
+  $('kpis').innerHTML = `<div class="kpi"><div class="l">Quiet responders</div><div class="v ${q?'warn':'ok'}">${q}</div></div>
+    <div class="kpi"><div class="l">Recovering</div><div class="v ok">${rc}</div></div>
+    <div class="kpi"><div class="l">Offers this week (shown)</div><div class="v">${tot}</div></div>`;
+}
+function renderTools(){
+  const c = f => f==='all'?data.length : f==='quiet'?data.filter(r=>r.state==='quiet').length : f==='recovering'?data.filter(recovering).length : data.filter(r=>r.state==='good').length;
+  $('tools').innerHTML = [['all','All'],['quiet','Quiet'],['recovering','Recovering'],['good','In good standing']].map(([f,l])=>`<button class="chip ${filter===f?'on':''}" data-filter="${f}">${l}<small>${c(f)}</small></button>`).join('')
+    + `<input class="search" id="q" placeholder="Search responder, area, handler" value="${query}">`;
+  $('q').addEventListener('input',e=>{ query=e.target.value; renderRoster(); });
+}
+function renderRoster(){
+  const rows = visible();
+  $('roster').innerHTML = '<div class="row head"><div>Responder</div><div>Area</div><div>Offers this week</div><div>Trend</div><div>Status</div><div></div></div>' +
+    (rows.length ? rows.map(r => `
+      <div class="row ${selected===r.id?'sel':''}" data-row="${r.id}">
+        <div class="who"><div class="dot">${initials(r.name)}</div><div><div class="name">${r.name}</div><div class="hand">Handler: ${r.handler}</div></div></div>
+        <div>${r.area}</div>
+        <div class="num"><b>${r.now}</b> <small>(8 wks ago: ${r.trend[0]})</small></div>
+        <div>${trendCell(r)}</div><div>${statusTag(r)}</div>
+        <div class="chev">${r.state==='good'?'':'▸'}</div>
+      </div>
+      <div class="detail ${selected===r.id&&r.state!=='good'?'open':''}">${detailHtml(r)}</div>`).join('') : '<div class="empty">No responders match.</div>');
+}
+function phoneHtml(r){
+  let note;
+  if (r.state==='fresh') note = `<div class="pn on"><b>You're back</b>You'll start getting callouts again. Thanks for sticking with us.</div>`;
+  else if (r.state==='recovering') note = `<div class="pn on"><b>Callouts are picking up</b>You're being offered more callouts each week. Earlier missed pings count for less over time.</div>`;
+  else if (r.state==='quiet') note = `<div class="pn warm"><b>Fewer callouts lately</b>You've been offered fewer callouts recently because of some missed pings. Your handler has been told and can help.</div>`;
+  else note = `<div class="pn plain">No notices. Everything's normal.</div>`;
+  const ok = r.state!=='quiet';
+  const offer = (recovering(r) && !r.answered) ? `<div class="offer"><b>New callout · ${r.area}</b><div class="fine">Structural entry · 6 min away</div>
+      <div class="btns"><button data-ans="down">Turn down</button><button class="primary" data-ans="take">Take it</button></div></div>` : '';
+  const answered = r.answered ? `<div class="pg"><div>Structural entry · ${r.area}<small>Just now</small></div><span class="pill ${r.answered==='take'?'t':'d'}">${r.answered==='take'?'Taken':'Turned down'}</span></div>` : '';
+  const hist = ok
+    ? `<div class="pg"><div>Harbour fire · ${r.area}<small>Yesterday</small></div><span class="pill t">Taken</span></div><div class="pg"><div>Callout · ${r.area}<small>2 days ago</small></div><span class="pill t">Taken</span></div>`
+    : `<div class="pg"><div>Callout · ${r.area}<small>Yesterday</small></div><span class="pill m">Missed</span></div><div class="pg"><div>Callout · ${r.area}<small>3 days ago</small></div><span class="pill m">Missed</span></div>`;
+  return `<div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="appbar"><div><h3>Rook Responder</h3><div class="sm">${r.name}</div></div><div class="avail">Available</div></div>
+    <div class="body">${note}${offer}<div class="sect">Recent pings</div>${answered}${hist}</div>
+    <div class="tabs"><span class="on">Callouts</span><span>Availability</span><span>Gear</span><span>Profile</span></div>`;
+}
+function renderPhone(){ $('screen').innerHTML = phoneHtml(cur()); }
+function renderAll(){ renderKpis(); renderStrip(); renderTools(); renderRoster(); renderPhone(); $('who').value=selected; }
+
+$('tools').addEventListener('click', e => { const b=e.target.closest('[data-filter]'); if(b){ filter=b.dataset.filter; renderTools(); renderRoster(); } });
+$('roster').addEventListener('click', e => {
+  const b=e.target.closest('button[data-act]');
+  if (b) { openReport(b.dataset.id); return; }
+  const row=e.target.closest('[data-row]');
+  if (row) { selected=row.dataset.row; renderRoster(); renderPhone(); $('who').value=selected; }
+});
+$('who').addEventListener('change', e => { selected=e.target.value; renderRoster(); renderPhone(); });
+$('screen').addEventListener('click', e => { const b=e.target.closest('[data-ans]'); if(b){ cur().answered=b.dataset.ans; renderPhone(); toast(b.dataset.ans==='take'?'Callout taken':'Callout turned down'); } });
+
+function openReport(id){
+  const r=data.find(x=>x.id===id);
+  $('modal').innerHTML = `<h3>Tell us what happened</h3><div class="fine" style="margin-bottom:8px">About ${r.name}. This is context for the Dispatch team. It doesn't change anyone's standing.</div>
+    <label><input type="radio" name="why" value="signal" checked> Poor signal or an outage</label>
+    <label><input type="radio" name="why" value="travel"> Travelling or a different time zone</label>
+    <label><input type="radio" name="why" value="device"> Phone or app problem</label>
+    <label><input type="radio" name="why" value="other"> Something else</label>
+    <textarea placeholder="Anything else we should know? (optional)"></textarea>
+    <div class="actions" style="justify-content:flex-end"><button id="cancel">Cancel</button><button class="primary" id="send">Send to Dispatch team</button></div>`;
+  $('scrim').classList.add('open');
+  $('cancel').onclick = () => $('scrim').classList.remove('open');
+  $('send').onclick = () => { r.reported=true; $('scrim').classList.remove('open'); renderRoster(); toast('Sent to the Dispatch team'); };
+}
+$('scrim').addEventListener('click', e => { if(e.target===$('scrim')) $('scrim').classList.remove('open'); });
+
+$('ff').addEventListener('click', () => {
+  const r=cur(); if (r.state!=='quiet' && r.state!=='recovering') { toast('Pick a quiet or recovering responder'); return; }
+  r.weeks=(r.weeks||0)+1; r.answered=null;
+  const next=Math.min(r.before, Math.round(r.now+(r.before-r.now)*0.3+1));
+  r.trend=r.trend.slice(1).concat(next); r.now=next; r.state='recovering';
+  if (r.now>=r.before-1) r.state='good';
+  renderAll();
+});
+$('simRestore').addEventListener('click', () => { const r=cur(); if(r.state==='quiet'){ r.state='fresh'; r.answered=null; renderAll(); } else toast('Only applies to a quiet responder'); });
+$('resetAll').addEventListener('click', () => { data=initial(); selected='farlight'; filter='all'; query=''; renderAll(); });
+renderAll();
+</script>
+</body>
+</html>
